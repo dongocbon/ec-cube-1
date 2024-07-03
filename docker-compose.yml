@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  php:
+    image: "ec_cube_vn"
+    build:
+      context: .
+      dockerfile: DockerfileDev
+      args:
+        - "APP_DEBUG=true"
+        - "APP_ENV=ec_cube"
+    container_name: "ec_cube_vn_php"
+    environment:
+      - "XDG_CONFIG_HOME=/var/www"
+      - "XDEBUG_CONFIG=client_host=host.docker.internal"
+    volumes:
+      - "./:/var/www"
+    ports:
+      - 81:80
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
+    networks:
+      backend:
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: eccubedb
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: secret
+    volumes:
+      - ".docker/mysql/data:/var/lib/mysql"
+      - ".docker/mysql/my.cnf:/etc/mysql/my.cnf"
+      - ".docker/mysql/grant_to_dbuser.sql:/docker-entrypoint-initdb.d/grant_to_dbuser.sql"
+    ports:
+      - 13306:3306
+    networks:
+      - backend
+    healthcheck:
+      test: mysqladmin ping
+      interval: 3s
+      timeout: 3s
+      retries: 3
+
+  mailcatcher:
+    image: schickling/mailcatcher
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    networks:
+      - backend
+
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  mailcatcher-data:
+    driver: local
